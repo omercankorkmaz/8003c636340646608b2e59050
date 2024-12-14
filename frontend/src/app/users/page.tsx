@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Space, Table, Tooltip, Button, Modal, Select, Input } from 'antd';
 import type { CheckboxOptionType, FormProps, TableProps } from 'antd';
 import { DeleteOutlined, EditOutlined, SaveOutlined } from '@ant-design/icons';
@@ -29,30 +29,47 @@ columnNames.forEach(columnName => {
     })
 });
 
-const data: Partial<User>[] = [
-    {
-        'id': '123',
-        'name': 'omer',
-        'surname': 'korkmaz',
-        'email': 'omercankorkmaz0@gmail.com',
-        'phone': '345123332',
-        'age': 27,
-        'country': 'Turkiye',
-        'district': 'Ankara',
-        'role': 'Sw Engineer',
-        'createdAt': new Date().toString(),
-        'updatedAt': new Date().toString()
-    },
-];
-
 const Users: React.FC = () => {
 
     const [form] = Form.useForm();
-    const [selectedUserId, setSelectedUserId] = useState();
+    const [users, setUsers] = useState<User[]>([]);
+    const [selectedUser, setSelectedUser] = useState<User>();
     const [selectedColumns, setSelectedColumns] = useState(columnNames);
     const [userModalOpen, setUserModalOpen] = useState(false);
     const [confirmLoading, setConfirmLoading] = useState(false);
-    const [searchLoading, setSearchLoading] = useState(false);
+
+    const [tableLoading, setTableLoading] = useState(true);
+
+    const [search, setSearch] = useState("");
+    const [pageNumber, setPageNumber] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [count, setCount] = useState(0);
+
+    const [resetTable, setResetTable] = useState(false);
+
+    const tblRef: Parameters<typeof Table>[0]['ref'] = React.useRef(null);
+
+    useEffect(() => {
+        async function fetchCount() {
+            const countRes = await fetch(`http://localhost:9000/users/count?search=${search}`);
+            const countData = await countRes.json();
+            setCount(countData.count);
+        }
+        fetchCount();
+    }, [search])
+
+    useEffect(() => {
+        async function fetchUsers() {
+            setTableLoading(true);
+
+            const res = await fetch(`http://localhost:9000/users?search=${search}&page=${pageNumber}&pageSize=${pageSize}`);
+            const data = await res.json();
+            setUsers(data.users);
+
+            setTableLoading(false);
+        }
+        fetchUsers();
+    }, [search, pageNumber, pageSize])
 
     const filteredColumns = columns.map(column => {
         return {
@@ -74,16 +91,13 @@ const Users: React.FC = () => {
                 <Tooltip placement="bottom" title={'Edit'}>
                     <Button icon={<EditOutlined />} type="link" size='large' onClick={handleModalOpen}></Button>
                 </Tooltip>
-                <Tooltip placement="bottom" title={'Delete'}>
-                    <Button icon={<DeleteOutlined />} type="link" size='large'></Button>
-                </Tooltip>
             </Space>
         ),
     };
 
     const onFinish: FormProps<Partial<User>>['onFinish'] = (values) => {
         setConfirmLoading(true);
-        console.log(selectedUserId);
+        console.log(selectedUser);
         console.log(values);
         // save op.
         setUserModalOpen(false);
@@ -96,8 +110,8 @@ const Users: React.FC = () => {
     };
 
     const handleModalOpen = () => {
-        form.setFieldsValue(data[0]);
-        setSelectedUserId(data[0].id);
+        form.setFieldsValue(users[0]);
+        setSelectedUser(users[0]);
         setUserModalOpen(true);
     }
 
@@ -122,10 +136,15 @@ const Users: React.FC = () => {
                     ></Select>
                 </div>
                 <div>
-                    <Search placeholder="Search" loading={searchLoading} enterButton />
+                    <Search placeholder="Search" enterButton onSearch={(value) => { setResetTable(true); setPageNumber(1); setSearch(value); }} />
                 </div>
             </div>
-            <Table<Partial<User>> columns={[...filteredColumns, actionColumn]} dataSource={data} bordered pagination={{ position: ['bottomCenter'], total: data.length }} />
+            <Table<Partial<User>> ref={tblRef} loading={tableLoading} columns={[...filteredColumns, actionColumn]} dataSource={users} bordered pagination={{
+                position: ['bottomCenter'], total: count, onChange: (page, pageSize) => {
+                    setPageNumber(page);
+                    setPageSize(pageSize);
+                }, showTotal: (total, range) => <span>Total {total} records, showing {range[0]} - {range[1]}</span>, current: pageNumber
+            }} />
             <Modal
                 title="Edit User"
                 open={userModalOpen}

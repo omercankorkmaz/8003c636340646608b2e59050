@@ -67,11 +67,25 @@ export class UserService {
     pageSize: number;
   }): Promise<{ message: string; users?: User[] }> {
     try {
-      const [result] = await this.connection.query(
-        `SELECT * FROM users WHERE CONCAT(name, "\0", surname, "\0", email, "\0", phone, "\0", age, "\0", country, "\0", district, "\0", role, "\0", createdAt, "\0", updatedAt) LIKE '%${query.search}%' LIMIT ${query.pageSize} OFFSET ${(query.page - 1) * query.pageSize};`,
-      );
+      if (!query.search) query.search = "%"
+      const [result] = await this.connection.query(`SELECT * FROM users WHERE CONCAT(name, "\0", surname, "\0", email, "\0", phone, "\0", age, "\0", country, "\0", district, "\0", role, "\0", createdAt, "\0", updatedAt) LIKE '%${query.search}%' LIMIT ${query.pageSize} OFFSET ${(query.page - 1) * query.pageSize};`);
       if ((result as User[]).length) {
         return { message: 'success', users: result as User[] };
+      } else {
+        return { message: 'not found any user' };
+      }
+    } catch (error) {
+      console.log(error);
+      return { message: 'error' };
+    }
+  }
+
+  async count(search: string): Promise<{ message: string; count?: number }> {
+    try {
+      if (!search) search = "%"
+      const [result] = await this.connection.query(`SELECT COUNT(*) as count FROM users WHERE CONCAT(name, "\0", surname, "\0", email, "\0", phone, "\0", age, "\0", country, "\0", district, "\0", role, "\0", createdAt, "\0", updatedAt) LIKE '%${search}%';`);
+      if (result) {
+        return { message: 'success', count: result[0].count };
       } else {
         return { message: 'not found any user' };
       }
@@ -115,11 +129,11 @@ export class UserService {
       let updateText = '';
       Object.keys(user).forEach((key, index) => {
         if (key !== 'id' && key !== 'password') {
-          updateText += ` ${key} = '${user[key]}'${index !== Object.keys(user).length - 1 ? ',' : ''}`;
+          updateText += ` ${key} = '${user[key]}',`;
         }
       });
       await this.connection.query(
-        `UPDATE users SET ${updateText} WHERE id=${user.id};`,
+        `UPDATE users SET ${updateText} updatedAt = STR_TO_DATE('${new Date().toLocaleDateString()}','%d.%m.%Y') WHERE id=${user.id};`,
       );
       return { message: 'success' };
     } catch (error) {

@@ -23,3 +23,7 @@ body {
 #root .ant-menu-horizontal {
   border: 0;
 } */
+
+.ant-table-cell {
+  padding: 6px 6px !important;
+}

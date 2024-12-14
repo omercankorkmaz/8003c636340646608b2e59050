@@ -13,6 +13,11 @@ export class UserController {
     return this.userService.getAll(query);
   }
 
+  @Get('/count')
+  count(@Query() query: { search: string; },): Promise<{ message: string; count?: number }> {
+    return this.userService.count(query.search);
+  }
+
   @Get('/:id')
   getById(@Param('id') id: string): Promise<{ message: string; user?: User }> {
     return this.userService.getById(id);
