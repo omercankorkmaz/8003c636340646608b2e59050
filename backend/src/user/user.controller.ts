@@ -7,14 +7,12 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get()
-  getAll(
-    @Query() query: { search: string; page: number; pageSize: number },
-  ): Promise<{ message: string; users?: User[] }> {
+  getAll(@Query() query: { search: string; page: number; pageSize: number }): Promise<{ message: string; users?: User[] }> {
     return this.userService.getAll(query);
   }
 
   @Get('/count')
-  count(@Query() query: { search: string; },): Promise<{ message: string; count?: number }> {
+  count(@Query() query: { search: string }): Promise<{ message: string; count?: number }> {
     return this.userService.count(query.search);
   }
 
